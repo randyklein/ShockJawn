@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Run strategy vs. SPY benchmark, after-tax returns baked in."""
 import argparse, sys, pandas as pd, backtrader as bt
-from config import START_CASH
-from data import load_symbol_minute, minute_to_daily
-from strategy import ShockReboundStrategy
-from model import load_or_train
-from reporting import write as write_report
+from ibot.config import START_CASH
+from ibot.data import load_symbol_minute, minute_to_daily
+from ibot.strategy import ShockReboundStrategy
+from ibot.model import load_or_train
+from ibot.reporting import write as write_report
 from loguru import logger
 
 def main(argv):

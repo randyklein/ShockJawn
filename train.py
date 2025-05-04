@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """CLI to train LightGBM model."""
 import argparse, sys
-from model import train
+from ibot.model import train
 
 def main(argv):
     ap = argparse.ArgumentParser()
