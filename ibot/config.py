@@ -23,3 +23,7 @@ HOLD_DAYS    = 30      # evaluation horizon / max hold
 ALPACA_API_KEY = os.getenv("ALPACA_API_KEY", "")
 ALPACA_API_SECRET = os.getenv("ALPACA_API_SECRET", "")
 ALPACA_PAPER = True  # False → live trading
+
+# ---- execution frictions -------------------------------------------------
+SLIPPAGE_PERC = 0.0002      # 2 bps per side = 4 bps round-trip
+# (commission is zero on Alpaca, regulatory fees ignored for now)

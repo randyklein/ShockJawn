@@ -1,4 +1,3 @@
-"""Markdown report writer for a back-test run."""
 from pathlib import Path
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -10,6 +9,7 @@ REPORT_DIR = PROJECT_ROOT / "reports"
 IMG_DIR    = REPORT_DIR / "img"
 IMG_DIR.mkdir(parents=True, exist_ok=True)
 
+
 def write(equity_curve: pd.Series,
           spy_curve: pd.Series,
           trades: pd.DataFrame,
@@ -17,30 +17,51 @@ def write(equity_curve: pd.Series,
     ts = datetime.utcnow().strftime("%Y-%m-%d_%H%M%S")
     img_path = IMG_DIR / f"equity_{ts}.png"
 
-    # --- plot ---
+    # ---------- plot ----------
     plt.figure()
     equity_curve.plot(label="Bot")
     spy_curve.plot(label="SPY TR")
     plt.legend(); plt.tight_layout()
-    plt.savefig(img_path)
-    plt.close()
+    plt.savefig(img_path); plt.close()
 
-    # --- summary stats ---
-    def cagr(s: pd.Series) -> float | None:
-        start, end = s.index[0], s.index[-1]
-        yrs = (end - start).days / 365.25
-        if yrs <= 0:
-            return None
-        return (s.iloc[-1] / s.iloc[0]) ** (1/yrs) - 1
+    # ---------- helper ----------
+    def cagr(series: pd.Series):
+        series = series[~series.index.duplicated()]      # drop dups
+        yrs = (series.index[-1].date() -
+            series.index[0].date()).days / 365.25
+        return None if yrs <= 0 else (series.iloc[-1] /
+                                    series.iloc[0]) ** (1/yrs) - 1
+
 
     bot_cagr = cagr(equity_curve)
     spy_cagr = cagr(spy_curve)
 
+    # ---------- dollar aggregates ----------
+    totals = (trades[["gross","tax","slippage","net"]]
+              .sum()
+              .rename({"gross":"Gross P&L",
+                       "tax":"Taxes",
+                       "slippage":"Slippage",
+                       "net":"Net P&L"}))
+
+    start_eq = equity_curve.iloc[0]
+    end_eq   = equity_curve.iloc[-1]
+    ret_abs  = end_eq - start_eq
+    ret_pct  = end_eq / start_eq - 1
+
     summary = {
-        "Bot CAGR":   f"{bot_cagr:.2%}" if bot_cagr is not None else "N/A",
-        "SPY CAGR":   f"{spy_cagr:.2%}" if spy_cagr is not None else "N/A",
-        "Max DD":     f"{(equity_curve / equity_curve.cummax() - 1).min():.2%}",
-        "Trades":     len(trades),
+        "Start Equity":     f"${start_eq:,.2f}",
+        "End Equity":       f"${end_eq:,.2f}",
+        "Total Return $":   f"${ret_abs:,.2f}",
+        "Total Return %":   f"{ret_pct:.2%}",
+        "Bot CAGR":         f"{cagr(equity_curve):.2%}" if cagr(equity_curve) is not None else "N/A",
+        "SPY CAGR":         f"{cagr(spy_curve):.2%}" if cagr(spy_curve)     is not None else "N/A",
+        "Total Gross P&L $":f"${totals['Gross P&L']:,.0f}",
+        "Total Taxes $":    f"${totals['Taxes']:,.0f}",
+        "Total Slippage $": f"${totals['Slippage']:,.0f}",
+        "Total Net P&L $":  f"${totals['Net P&L']:,.0f}",
+        "Max DD":           f"{(equity_curve/ equity_curve.cummax() - 1).min():.2%}",
+        "Trades":           len(trades),
         **params
     }
 
@@ -52,7 +73,10 @@ def write(equity_curve: pd.Series,
         for k, v in summary.items():
             f.write(f"- **{k}**: {v}\n")
         f.write("\n---\n")
-        f.write("## Trades (head)\n\n")
-        f.write(trades.head(10).to_markdown() + "\n")
+        f.write("## Trades\n\n")
+        if trades.empty:
+            f.write("_No trades executed_\n")
+        else:
+            f.write(trades.to_markdown(index=False))
 
     logger.success("Report saved ➜ {}", md_path)
