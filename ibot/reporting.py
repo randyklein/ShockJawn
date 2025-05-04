@@ -26,11 +26,11 @@ def write(equity_curve: pd.Series,
 
     # ---------- helper ----------
     def cagr(series: pd.Series):
-        series = series[~series.index.duplicated()]      # drop dups
-        yrs = (series.index[-1].date() -
-            series.index[0].date()).days / 365.25
-        return None if yrs <= 0 else (series.iloc[-1] /
-                                    series.iloc[0]) ** (1/yrs) - 1
+        s = (series.sort_index()                # make sure strictly increasing
+                    .loc[~series.index.duplicated(keep="first")])
+        yrs = (s.index[-1] - s.index[0]).days / 365.25
+        return None if yrs <= 0 else (s.iloc[-1] / s.iloc[0])**(1 / yrs) - 1
+
 
 
     bot_cagr = cagr(equity_curve)
@@ -54,8 +54,8 @@ def write(equity_curve: pd.Series,
         "End Equity":       f"${end_eq:,.2f}",
         "Total Return $":   f"${ret_abs:,.2f}",
         "Total Return %":   f"{ret_pct:.2%}",
-        "Bot CAGR":         f"{cagr(equity_curve):.2%}" if cagr(equity_curve) is not None else "N/A",
-        "SPY CAGR":         f"{cagr(spy_curve):.2%}" if cagr(spy_curve)     is not None else "N/A",
+        "Bot CAGR (less tax & fees)":         f"{cagr(equity_curve):.2%}" if cagr(equity_curve) is not None else "N/A",
+        "SPY CAGR (less 15% tax)":         f"{cagr(spy_curve):.2%}" if cagr(spy_curve)     is not None else "N/A",
         "Total Gross P&L $":f"${totals['Gross P&L']:,.0f}",
         "Total Taxes $":    f"${totals['Taxes']:,.0f}",
         "Total Slippage $": f"${totals['Slippage']:,.0f}",

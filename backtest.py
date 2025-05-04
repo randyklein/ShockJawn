@@ -31,6 +31,8 @@ def main(argv):
     cerebro = bt.Cerebro()
     cerebro.broker.setcash(START_CASH)
     cerebro.broker.set_slippage_perc(perc=SLIPPAGE_PERC)
+    cerebro.addanalyzer(bt.analyzers.TimeReturn, timeframe=bt.TimeFrame.NoTimeFrame)
+
 
     # Train or load model
     model = load_or_train(symbols, "2014-01-02", args.start)
@@ -65,6 +67,8 @@ def main(argv):
 
     # Build SPY curve directly from DataFrame
     spy_curve = spy_daily["close"] / spy_daily["close"].iloc[0] * START_CASH
+
+    spy_curve *= (1 - 0.15)
 
     # Write detailed report (now with full universe subset and slippage/tax)
     write_report(
