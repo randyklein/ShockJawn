@@ -1,0 +1,8 @@
+backtrader==1.9.78.123
+pyarrow>=15.0
+pandas>=2.2
+lightgbm>=4.3
+scikit-learn>=1.5
+loguru>=0.7
+ray[tune]>=2.11
+matplotlib>=3.9

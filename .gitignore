@@ -1,0 +1,7 @@
+/.env
+/.venv
+/data
+/ShockJawn.code-workspace
+/TODO
+/__init__.py
+/__pycache__
