@@ -1,3 +1,5 @@
+# ibot/model.py
+
 """Train / load the LightGBM rebound-prediction model."""
 from pathlib import Path
 import lightgbm as lgb
@@ -20,13 +22,42 @@ FEATURES = [
 def build_dataset(symbols: list[str], date_from: str, date_to: str) -> pd.DataFrame:
     """Return a concatenated DataFrame (multi-symbol) of shock rows only."""
     dfs = []
+    # compute minimum rows needed for rolling windows + hold
+    min_rows = max(20, 14) + HOLD_DAYS + 1
+
     for sym, df in load_daily(symbols).items():
         df = df.loc[date_from:date_to]
-        df = label_shocks(df, SHOCK_SIGMA)
-        shocks = df[df["is_shock"] == 1].copy()
+        if df.empty:
+            logger.warning("No data for {} in {}–{}", sym, date_from, date_to)
+            continue
+
+        if len(df) < min_rows:
+            logger.warning(
+                "Not enough data for {}: {} rows (< {})",
+                sym, len(df), min_rows
+            )
+            continue
+
+        try:
+            df_labeled = label_shocks(df, SHOCK_SIGMA)
+        except Exception as e:
+            logger.error("Failed to label shocks for {}: {}", sym, e)
+            continue
+
+        shocks = df_labeled[df_labeled["is_shock"] == 1].copy()
+        if shocks.empty:
+            logger.debug("No shocks found for {}", sym)
+            continue
+
         shocks["symbol"] = sym
         dfs.append(shocks)
-    return pd.concat(dfs)
+
+    if not dfs:
+        raise ValueError("No shock data found across all symbols; nothing to train on")
+
+    dataset = pd.concat(dfs)
+    logger.info("Built dataset with {} shock rows across {} symbols", len(dataset), len(dfs))
+    return dataset
 
 def train(symbols: list[str], date_from: str, date_to: str):
     data = build_dataset(symbols, date_from, date_to)

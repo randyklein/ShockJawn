@@ -1,4 +1,5 @@
 # ibot/strategy.py
+
 import backtrader as bt
 from .config import RISK_BUDGET, ATR_MULT, HOLD_DAYS
 from .taxes import TaxLots
@@ -13,10 +14,13 @@ class ShockReboundStrategy(bt.Strategy):
     )
 
     def __init__(self):
-        # set up FIFO tax‐lot accounting
+        # FIFO tax‐lot accounting
         self.tax = TaxLots()
 
-        # indicators per data feed
+        # Prepare to record equity curve
+        self.value_hist: list[tuple] = []
+
+        # Indicators per data feed
         self.inds = {}
         for d in self.datas:
             atr   = bt.ind.ATR(d, period=14)
@@ -28,25 +32,26 @@ class ShockReboundStrategy(bt.Strategy):
             d.shock = shock  # expose for logic below
 
     def next(self):
+        # Record current portfolio value once per time step
+        dt = self.datas[0].datetime.datetime(0)
+        self.value_hist.append((dt, self.broker.getvalue()))
+
         for d in self.datas:
             pos = self.getposition(d)
             i   = self.inds[d]
-            dt  = d.datetime.datetime(0)
             price = d.close[0]
 
-            # ENTRY: no position + shock detected
+            # ENTRY
             if not pos and i["shock"][0]:
                 risk_per_share = i["atr"][0] * self.p.atr_mult
                 stake = int((self.broker.getcash() * self.p.risk_budget) / risk_per_share)
                 if stake > 0:
-                    # record the lot
                     self.tax.buy(d._name, stake, price, dt)
-                    # execute
                     self.buy(data=d, size=stake)
                     d.entry_price = price
                     d.entry_bar   = len(d)
 
-            # EXIT: position exists
+            # EXIT
             elif pos:
                 gross = (price - d.entry_price) * pos.size
 
@@ -55,15 +60,13 @@ class ShockReboundStrategy(bt.Strategy):
                     net = self.tax.sell(d._name, pos.size, price, dt)
                     tax = gross - net
                     self.close(data=d)
-                    # subtract tax from cash so equity curve is net of taxes
-                    self.broker.addcash(-tax)
+                    self.broker.add_cash(-tax)
 
                 else:
-                    # profit‐take or hard stop
                     stop  = d.entry_price - i["atr"][0] * self.p.atr_mult
                     limit = d.entry_price + i["atr"][0] * self.p.atr_mult
                     if price <= stop or price >= limit:
                         net = self.tax.sell(d._name, pos.size, price, dt)
                         tax = gross - net
                         self.close(data=d)
-                        self.broker.addcash(-tax)
+                        self.broker.add_cash(-tax)

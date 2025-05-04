@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 from ta.volatility import AverageTrueRange  # pip install ta
-from .config import SHOCK_SIGMA, HOLD_DAYS
+from ibot.config import SHOCK_SIGMA, HOLD_DAYS
 
 def add_volatility(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
