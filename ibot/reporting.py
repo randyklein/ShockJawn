@@ -25,13 +25,11 @@ def write(equity_curve: pd.Series,
     plt.savefig(img_path); plt.close()
 
     # ---------- helper ----------
-    def cagr(series: pd.Series):
-        s = (series.sort_index()                # make sure strictly increasing
-                    .loc[~series.index.duplicated(keep="first")])
+    def cagr(series):
+        s = series.sort_index()
+        s = s.loc[~s.index.normalize().duplicated(keep="first")]
         yrs = (s.index[-1] - s.index[0]).days / 365.25
-        return None if yrs <= 0 else (s.iloc[-1] / s.iloc[0])**(1 / yrs) - 1
-
-
+        return None if yrs <= 0 else (s.iloc[-1]/s.iloc[0])**(1/yrs) - 1
 
     bot_cagr = cagr(equity_curve)
     spy_cagr = cagr(spy_curve)

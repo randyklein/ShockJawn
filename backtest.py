@@ -31,8 +31,6 @@ def main(argv):
     cerebro = bt.Cerebro()
     cerebro.broker.setcash(START_CASH)
     cerebro.broker.set_slippage_perc(perc=SLIPPAGE_PERC)
-    cerebro.addanalyzer(bt.analyzers.TimeReturn, timeframe=bt.TimeFrame.NoTimeFrame)
-
 
     # Train or load model
     model = load_or_train(symbols, "2014-01-02", args.start)
